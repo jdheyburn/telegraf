@@ -1,5 +1,5 @@
 //go:generate ../../../tools/readme_config_includer/generator
-package datadog
+package datadog_statsd
 
 import (
 	"bytes"
@@ -23,7 +23,7 @@ import (
 //go:embed sample.conf
 var sampleConfig string
 
-type Datadog struct {
+type DatadogStatsd struct {
 	Apikey      string          `toml:"apikey"`
 	Timeout     config.Duration `toml:"timeout"`
 	URL         string          `toml:"url"`
@@ -50,12 +50,13 @@ type Metric struct {
 type Point [2]float64
 
 const datadogAPI = "https://app.datadoghq.com/api/v1/series"
+const defaultInterval = 10
 
-func (*Datadog) SampleConfig() string {
+func (*DatadogStatsd) SampleConfig() string {
 	return sampleConfig
 }
 
-func (d *Datadog) Connect() error {
+func (d *DatadogStatsd) Connect() error {
 	if d.Apikey == "" {
 		return fmt.Errorf("apikey is a required field for datadog output")
 	}
@@ -74,7 +75,7 @@ func (d *Datadog) Connect() error {
 	return nil
 }
 
-func (d *Datadog) Write(metrics []telegraf.Metric) error {
+func (d *DatadogStatsd) Write(metrics []telegraf.Metric) error {
 	ts := TimeSeries{}
 	tempSeries := []*Metric{}
 	metricCounter := 0
@@ -100,7 +101,8 @@ func (d *Datadog) Write(metrics []telegraf.Metric) error {
 				var tname string
 				switch m.Type() {
 				case telegraf.Counter:
-					tname = "count"
+					dogM[1] = dogM[1] / defaultInterval
+					tname = "rate"
 				case telegraf.Gauge:
 					tname = "gauge"
 				default:
@@ -111,7 +113,7 @@ func (d *Datadog) Write(metrics []telegraf.Metric) error {
 					Tags:     metricTags,
 					Host:     host,
 					Type:     tname,
-					Interval: 1,
+					Interval: defaultInterval,
 				}
 				metric.Points[0] = dogM
 				tempSeries = append(tempSeries, metric)
@@ -177,7 +179,7 @@ func (d *Datadog) Write(metrics []telegraf.Metric) error {
 	return nil
 }
 
-func (d *Datadog) authenticatedURL() string {
+func (d *DatadogStatsd) authenticatedURL() string {
 	q := url.Values{
 		"api_key": []string{d.Apikey},
 	}
@@ -238,13 +240,13 @@ func (p *Point) setValue(v interface{}) error {
 	return nil
 }
 
-func (d *Datadog) Close() error {
+func (d *DatadogStatsd) Close() error {
 	return nil
 }
 
 func init() {
-	outputs.Add("datadog", func() telegraf.Output {
-		return &Datadog{
+	outputs.Add("datadog_statsd", func() telegraf.Output {
+		return &DatadogStatsd{
 			URL:         datadogAPI,
 			Compression: "none",
 		}

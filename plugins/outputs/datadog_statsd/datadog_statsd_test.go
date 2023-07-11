@@ -1,4 +1,4 @@
-package datadog
+package datadog_statsd
 
 import (
 	"encoding/json"
@@ -21,15 +21,15 @@ var (
 	fakeAPIKey = "123456"
 )
 
-func NewDatadog(url string) *Datadog {
-	return &Datadog{
+func NewDatadogStatsd(url string) *DatadogStatsd {
+	return &DatadogStatsd{
 		URL: url,
 		Log: testutil.Logger{},
 	}
 }
 
-func fakeDatadog() *Datadog {
-	d := NewDatadog(fakeURL)
+func fakeDatadogStatsd() *DatadogStatsd {
+	d := NewDatadogStatsd(fakeURL)
 	d.Apikey = fakeAPIKey
 	return d
 }
@@ -41,7 +41,7 @@ func TestUriOverride(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	d := NewDatadog(ts.URL)
+	d := NewDatadogStatsd(ts.URL)
 	d.Apikey = "123456"
 	err := d.Connect()
 	require.NoError(t, err)
@@ -56,7 +56,7 @@ func TestCompressionOverride(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	d := NewDatadog(ts.URL)
+	d := NewDatadogStatsd(ts.URL)
 	d.Apikey = "123456"
 	d.Compression = "zlib"
 	err := d.Connect()
@@ -73,7 +73,7 @@ func TestBadStatusCode(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	d := NewDatadog(ts.URL)
+	d := NewDatadogStatsd(ts.URL)
 	d.Apikey = "123456"
 	err := d.Connect()
 	require.NoError(t, err)
@@ -86,7 +86,7 @@ func TestBadStatusCode(t *testing.T) {
 }
 
 func TestAuthenticatedUrl(t *testing.T) {
-	d := fakeDatadog()
+	d := fakeDatadogStatsd()
 
 	authURL := d.authenticatedURL()
 	require.EqualValues(t, fmt.Sprintf("%s?api_key=%s", fakeURL, fakeAPIKey), authURL)
@@ -265,7 +265,7 @@ func TestVerifyValue(t *testing.T) {
 }
 
 func TestNaNIsSkipped(t *testing.T) {
-	plugin := &Datadog{
+	plugin := &DatadogStatsd{
 		Apikey: "testing",
 		URL:    "", // No request will be sent because all fields are skipped
 	}
@@ -286,7 +286,7 @@ func TestNaNIsSkipped(t *testing.T) {
 }
 
 func TestInfIsSkipped(t *testing.T) {
-	plugin := &Datadog{
+	plugin := &DatadogStatsd{
 		Apikey: "testing",
 		URL:    "", // No request will be sent because all fields are skipped
 	}
