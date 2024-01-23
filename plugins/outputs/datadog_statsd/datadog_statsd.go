@@ -84,6 +84,7 @@ func (d *DatadogStatsd) Write(metrics []telegraf.Metric) error {
 		if dogMs, err := buildMetrics(m); err == nil {
 			metricTags := buildTags(m.TagList())
 			host, _ := m.GetTag("host")
+			mType, _ := m.GetTag("metric_type")
 
 			if len(dogMs) == 0 {
 				continue
@@ -99,21 +100,20 @@ func (d *DatadogStatsd) Write(metrics []telegraf.Metric) error {
 					dname = m.Name() + "." + fieldName
 				}
 				var tname string
-				switch m.Type() {
-				case telegraf.Counter:
-					dogM[1] = dogM[1] / defaultInterval
+				var interval int64
+				interval = 10
+				if mType != "" && (mType == "counter" || (mType == "timing" || mType == "histogram") && fieldName == "count") {
+					dogM[1] = dogM[1] / 10
 					tname = "rate"
-				case telegraf.Gauge:
+				} else {
 					tname = "gauge"
-				default:
-					tname = ""
 				}
 				metric := &Metric{
 					Metric:   dname,
 					Tags:     metricTags,
 					Host:     host,
 					Type:     tname,
-					Interval: defaultInterval,
+					Interval: interval,
 				}
 				metric.Points[0] = dogM
 				tempSeries = append(tempSeries, metric)
